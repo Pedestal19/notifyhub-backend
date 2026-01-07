@@ -49,4 +49,72 @@ The system is designed as a set of backend services:
 - AWS (EC2, S3, RDS, SQS – later stages)
 
 ## Status
-🚧 Work in progress — initial API and database setup in progress.
+🚧 Work in progress — core backend foundation and local infrastructure setup in progress.
+
+## Local Development Setup
+### Prerequisites
+
+- **Docker** & **Docker Compose**
+- **Java 17+**
+- **Maven**
+- **PostgreSQL client (`psql`)** – optional but recommended
+
+### 🐘 PostgreSQL (Docker)
+
+NotifyHub uses **PostgreSQL running in Docker** for local development.
+
+#### Port Mapping
+
+| Environment      | Port |
+|------------------|------|
+| Docker container | 5432 |
+| Host machine     | 5433 |
+
+> Port `5433` is used on the host to avoid conflicts with local PostgreSQL installations.
+
+#### Start PostgreSQL
+
+```docker compose up -d ```
+
+
+Verify database connectivity:
+
+```psql "postgres://notifyhub:notifyhub@127.0.0.1:5433/notifyhub" -c "select 1;"```
+
+
+Expected output:
+
+```1```
+
+### Running the Services
+
+#### API
+
+```cd notifyhub-api```
+
+```mvn spring-boot:run```
+
+
+Health check:
+
+```http://localhost:8080/actuator/health```
+
+
+Worker
+
+```cd notifyhub-worker```
+
+```mvn spring-boot:run```
+
+
+Health check:
+
+```http://localhost:8081/actuator/health```
+
+## Notes
+
+If you have PostgreSQL installed locally (e.g. Postgres.app), it usually runs on port 5432.
+
+Docker PostgreSQL is intentionally mapped to 5433 to avoid conflicts.
+
+Update application-dev.yml if you change ports.

@@ -8,4 +8,9 @@ services:
       POSTGRES_USER: notifyhub
       POSTGRES_PASSWORD: notifyhub
     ports:
-      - "5432:5432"
+      - "5433:5432"
+    volumes:
+      - notifyhub_pgdata:/var/lib/postgresql/data
+
+volumes:
+  notifyhub_pgdata:

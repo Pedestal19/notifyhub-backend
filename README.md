@@ -41,15 +41,45 @@ The system is designed as a set of backend services:
 - Worker service for asynchronous processing, retries, and delivery
 - Messaging layer for decoupled processing
 
+## Database Migrations (Flyway)
+
+NotifyHub uses Flyway for managing database schema migrations.
+
+All database changes are versioned and applied automatically at application startup. This ensures that schema changes are consistent, repeatable, and safe across environments.
+
+Migration files are located at:
+
+```notifyhub-api/src/main/resources/db/migration```
+
+Each migration follows Flyway’s versioned naming convention, for example:
+
+```V1__create_inbound_message.sql```
+
+In local development, Hibernate is configured with:
+
+```ddl-auto: validate```
+
+This means Hibernate validates the schema created by Flyway but does not attempt to create or modify tables itself. This approach mirrors production-grade systems where schema changes are controlled explicitly via migrations.
+
 ## Tech Stack
 - Java 17
 - Spring Boot 3
 - PostgreSQL
 - Docker
-- AWS (EC2, S3, RDS, SQS – later stages)
+- AWS (EC2, RDS, SQS – planned for later stages)
 
 ## Status
 🚧 Work in progress — core backend foundation and local infrastructure setup in progress.
+
+Current focus areas:
+
+- Database schema and migrations
+
+- Domain modeling
+
+- API foundations
+
+- Observability via Actuator
 
 ## Local Development Setup
 ### Prerequisites
@@ -85,6 +115,22 @@ Verify database connectivity:
 Expected output:
 
 ```1```
+
+#### Database Schema Management
+
+Database schema is managed using Flyway migrations.
+
+On application startup:
+
+Flyway checks the flyway_schema_history table
+
+Validates existing migrations
+
+Applies new migrations if present
+
+Fails fast if migrations are inconsistent
+
+This ensures database integrity and predictable startup behavior.
 
 ### Running the Services
 

@@ -1,5 +1,11 @@
 # Database migrations (Flyway)
 
+This project uses Flyway for database schema management.
+
+- All schema changes are versioned SQL files
+- Migrations run automatically on startup
+- Hibernate is configured in validation-only mode
+
 We manage schema changes using Flyway migrations.
 
 ## How it works

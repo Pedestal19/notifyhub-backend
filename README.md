@@ -24,6 +24,16 @@ NotifyHub centralizes incoming messages into a single backend platform where the
 - Forwarded to other systems
 - Queried for reporting and analytics
 
+## Design Principles
+
+- Explicit data ownership
+
+- Asynchronous processing where possible
+
+- Clear separation between API and background work
+
+- Operational visibility over hidden magic
+
 ## Intended Users
 
 - **Administrators**
@@ -67,6 +77,22 @@ This means Hibernate validates the schema created by Flyway but does not attempt
 - PostgreSQL
 - Docker
 - AWS (EC2, RDS, SQS – planned for later stages)
+
+## Schema Management Strategy
+
+Flyway: owns schema creation and evolution
+
+JPA/Hibernate: maps entities to an existing schema
+
+No auto-DDL in runtime environments
+
+This separation ensures:
+
+- Clear ownership of database structure
+
+- Safer deployments
+
+- Easier debugging and rollbacks
 
 ## Status
 🚧 Work in progress — core backend foundation and local infrastructure setup in progress.
@@ -115,6 +141,11 @@ Verify database connectivity:
 Expected output:
 
 ```1```
+
+On first startup, Flyway will automatically create required tables and indexes.
+
+If schema validation fails, check migration scripts before adjusting entity mappings.
+
 
 #### Database Schema Management
 

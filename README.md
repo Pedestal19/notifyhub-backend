@@ -51,6 +51,28 @@ The system is designed as a set of backend services:
 - Worker service for asynchronous processing, retries, and delivery
 - Messaging layer for decoupled processing
 
+## How Messages Enter NotifyHub
+
+- Providers (WhatsApp/SMS/USSD aggregators like Twilio, Africa’s Talking, Termii, etc.) deliver inbound messages to a customer-configured webhook URL.
+
+- NotifyHub exposes a provider-agnostic ingestion API endpoint:
+
+- POST /v1/inbound-messages
+
+- NotifyHub stores each message in PostgreSQL and (later) publishes an event to a queue/topic for asynchronous processing.
+
+- The Worker service consumes events, applies reliability patterns (idempotency, retries), enriches records, and forwards messages to downstream systems (webhooks / internal APIs / queues).
+
+## Inbound endpoint
+
+Inbound ingestion:
+
+POST ```http://localhost:8080/v1/inbound-messages```
+(canonical)
+
+POST ```http://localhost:8080/webhooks/inbound```
+(alias; same processing)
+
 ## Database Migrations (Flyway)
 
 NotifyHub uses Flyway for managing database schema migrations.
@@ -146,22 +168,6 @@ On first startup, Flyway will automatically create required tables and indexes.
 
 If schema validation fails, check migration scripts before adjusting entity mappings.
 
-
-#### Database Schema Management
-
-Database schema is managed using Flyway migrations.
-
-On application startup:
-
-Flyway checks the flyway_schema_history table
-
-Validates existing migrations
-
-Applies new migrations if present
-
-Fails fast if migrations are inconsistent
-
-This ensures database integrity and predictable startup behavior.
 
 ### Running the Services
 

@@ -11,6 +11,24 @@ NotifyHub is an inbound-message platform that:
 - processes them asynchronously (enrichment, routing, retries)
 - exposes them for reporting/export/integration
 
+### How NotifyHub is used (end-to-end)
+
+- A customer provisions inbound channels (SMS number, WhatsApp Business number, USSD shortcode) through a provider (Twilio, Africa’s Talking, Termii, Infobip, Meta, etc.).
+
+- The customer configures the provider to deliver inbound traffic to NotifyHub via an HTTP webhook URL.
+
+- When an end user sends a message, the provider POSTs the message payload to NotifyHub.
+
+- NotifyHub ingests the payload through a provider-agnostic endpoint, persists an InboundMessage record with status RECEIVED, and emits an async job/event for further processing.
+
+- The Worker consumes the job/event, applies processing logic (enrichment/routing), updates status, and (in later phases) forwards messages to downstream systems (webhooks/queues/internal APIs).
+
+### Integration styles
+
+- Webhook delivery (default / preferred): provider calls NotifyHub in real time.
+
+- Provider API polling (future option): NotifyHub periodically pulls inbound messages from provider APIs if needed.
+
 ## 2) InboundMessage (v1 Entity)
 
 Represents a single inbound message received by NotifyHub.

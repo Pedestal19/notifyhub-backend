@@ -62,5 +62,5 @@ public class InboundMessageEntity {
     private OffsetDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
-    private OffsetDateTime updateAt;
+    private OffsetDateTime updatedAt;
 }

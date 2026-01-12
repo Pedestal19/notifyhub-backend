@@ -102,3 +102,22 @@ Owns:
 - SQS/Kafka integration
 - outbound delivery to third-party systems
 - reporting UI and exports
+
+## Canonical ingestion request (DTO)
+
+NotifyHub uses a **canonical ingestion request DTO** so that all providers (Twilio/Meta/etc.) can be mapped into one internal shape.
+
+This keeps the ingestion rules consistent and prevents provider-specific payloads from leaking into the core domain.
+
+### Canonical fields (v1)
+
+- `channel` (string/enum): `SMS | WHATSAPP | USSD`
+- `phoneNumber` (string): sender MSISDN (raw for v1)
+- `body` (string): message content
+- `receivedAt` (optional timestamp): if provider supplies it; otherwise server time is used
+
+### Why this exists
+
+- One “source of truth” for validation + normalization
+- Easier to add more providers later (just write a mapper)
+- Prevents controller logic from being duplicated across webhook endpoints

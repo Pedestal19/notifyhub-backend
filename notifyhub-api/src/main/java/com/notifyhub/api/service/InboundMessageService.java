@@ -43,7 +43,7 @@ public class InboundMessageService {
         var pageable = PageRequest.of(0, Math.min(limit, 100));
 
         var page = (status == null)
-                ? repository.findAll(pageable)
+                ? repository.findAllByOrderByReceivedAtDesc(pageable)
                 : repository.findByStatusOrderByReceivedAtDesc(status, pageable);
 
         return page.stream()

@@ -13,21 +13,21 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class InboundMessageController {
 
-    private final InboundMessageService service;
+    private final InboundMessageService inboundMessageService;
 
-    public InboundMessageController(InboundMessageService service) {
-        this.service = service;
+    public InboundMessageController(InboundMessageService inboundMessageService) {
+        this.inboundMessageService = inboundMessageService;
     }
 
     @PostMapping("/v1/inbound-messages")
     @ResponseStatus(HttpStatus.CREATED)
     public InboundMessageResponse ingestV1(@Valid @RequestBody InboundMessageIngestRequest request) {
-        return service.ingest(request);
+        return inboundMessageService.ingest(request);
     }
 
     @PostMapping("/webhooks/inbound")
     @ResponseStatus(HttpStatus.CREATED)
     public InboundMessageResponse ingestWebhook(@Valid @RequestBody InboundMessageIngestRequest request) {
-        return service.ingest(request);
+        return inboundMessageService.ingest(request);
     }
 }

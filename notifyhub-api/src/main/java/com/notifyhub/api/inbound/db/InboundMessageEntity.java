@@ -37,8 +37,8 @@ import java.util.UUID;
 public class InboundMessageEntity {
 
     @Id
-    @GeneratedValue
     @UuidGenerator
+    @GeneratedValue
     @Column(name = "id", nullable = false, updatable = false)
     private UUID id;
 

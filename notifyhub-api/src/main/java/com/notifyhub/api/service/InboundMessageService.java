@@ -23,7 +23,6 @@ public class InboundMessageService {
         OffsetDateTime receivedAt = (req.receivedAt() != null) ? req.receivedAt() : OffsetDateTime.now();
 
         InboundMessageEntity entity = InboundMessageEntity.builder()
-                .id(UUID.randomUUID())
                 .channel(req.channel())
                 .phoneNumber(req.phoneNumber())
                 .body(req.body())

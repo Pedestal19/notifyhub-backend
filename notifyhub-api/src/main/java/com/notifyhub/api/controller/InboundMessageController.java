@@ -40,14 +40,6 @@ public class InboundMessageController {
             @RequestParam(required = false) InboundMessageStatus status,
             @RequestParam(defaultValue = "20") int limit
     ){
-        var pageable = PageRequest.of(0, Math.min(limit, 100));
-
-        var page = (status == null)
-                ? inboundMessageRepository.findAll(pageable)
-                : inboundMessageRepository.findByStatusOrderByReceivedAtDesc(status, pageable);
-
-        return page.stream()
-                .map(e -> new InboundMessageResponse(e.getId(), e.getStatus(), e.getReceivedAt()))
-                .toList();
+        return inboundMessageService.list(status, limit);
     }
 }

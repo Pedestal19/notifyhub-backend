@@ -5,9 +5,11 @@ import com.notifyhub.api.dto.InboundMessageResponse;
 import com.notifyhub.api.inbound.db.InboundMessageEntity;
 import com.notifyhub.api.inbound.db.InboundMessageRepository;
 import com.notifyhub.api.inbound.domain.InboundMessageStatus;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 
 @Service
 public class InboundMessageService {
@@ -35,5 +37,17 @@ public class InboundMessageService {
 
         return new InboundMessageResponse(entity.getId(), entity.getStatus(), entity.getReceivedAt());
 
+    }
+
+    public List<InboundMessageResponse> list(InboundMessageStatus status, int limit) {
+        var pageable = PageRequest.of(0, Math.min(limit, 100));
+
+        var page = (status == null)
+                ? repository.findAll(pageable)
+                : repository.findByStatusOrderByReceivedAtDesc(status, pageable);
+
+        return page.stream()
+                .map(e -> new InboundMessageResponse(e.getId(), e.getStatus(), e.getReceivedAt()))
+                .toList();
     }
 }

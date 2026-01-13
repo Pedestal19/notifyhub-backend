@@ -8,7 +8,6 @@ import com.notifyhub.api.inbound.domain.InboundMessageStatus;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
-import java.util.UUID;
 
 @Service
 public class InboundMessageService {

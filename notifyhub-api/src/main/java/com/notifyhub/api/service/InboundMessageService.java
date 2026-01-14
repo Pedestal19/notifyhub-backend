@@ -1,6 +1,7 @@
 package com.notifyhub.api.service;
 
 import com.notifyhub.api.dto.InboundMessageIngestRequest;
+import com.notifyhub.api.dto.InboundMessageListItem;
 import com.notifyhub.api.dto.InboundMessageResponse;
 import com.notifyhub.api.inbound.db.InboundMessageEntity;
 import com.notifyhub.api.inbound.db.InboundMessageRepository;
@@ -39,7 +40,7 @@ public class InboundMessageService {
 
     }
 
-    public List<InboundMessageResponse> list(InboundMessageStatus status, int limit) {
+    public List<InboundMessageListItem> list(InboundMessageStatus status, int limit) {
         var pageable = PageRequest.of(0, Math.min(limit, 100));
 
         var page = (status == null)
@@ -47,7 +48,7 @@ public class InboundMessageService {
                 : repository.findByStatusOrderByReceivedAtDesc(status, pageable);
 
         return page.stream()
-                .map(e -> new InboundMessageResponse(e.getId(), e.getStatus(), e.getReceivedAt()))
+                .map(e -> new InboundMessageListItem(e.getId(), e.getChannel(), e.getPhoneNumber(), e.getBody(), e.getStatus(), e.getReceivedAt()))
                 .toList();
     }
 }

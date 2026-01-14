@@ -1,6 +1,7 @@
 package com.notifyhub.api.controller;
 
 import com.notifyhub.api.dto.InboundMessageIngestRequest;
+import com.notifyhub.api.dto.InboundMessageListItem;
 import com.notifyhub.api.dto.InboundMessageResponse;
 import com.notifyhub.api.inbound.db.InboundMessageRepository;
 import com.notifyhub.api.inbound.domain.InboundMessageStatus;
@@ -40,7 +41,7 @@ public class InboundMessageController {
     }
 
     @GetMapping("/v1/inbound-messages")
-    public List<InboundMessageResponse> list(
+    public List<InboundMessageListItem> list(
             @RequestParam(required = false) InboundMessageStatus status,
             @RequestParam(defaultValue = "20") int limit
     ){

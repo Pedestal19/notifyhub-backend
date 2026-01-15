@@ -13,12 +13,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class InboundMessagingServiceTest {
+public class InboundMessageServiceTest {
 
     @Mock
     InboundMessageRepository inboundMessageRepository;
@@ -36,10 +37,18 @@ public class InboundMessagingServiceTest {
                 null
         );
 
+        when(inboundMessageRepository.save(any(InboundMessageEntity.class)))
+                .thenAnswer(invocation -> {
+                    InboundMessageEntity e = invocation.getArgument(0);
+                    if (e.getId() == null) e.setId(UUID.randomUUID());
+                    return e;
+                });
+
         InboundMessageResponse inboundMessageResponse = inboundMessageService.ingest(inboundMessageIngestRequest);
 
         assertThat(inboundMessageResponse.status()).isEqualTo(InboundMessageStatus.RECEIVED);
         assertThat(inboundMessageResponse.receivedAt()).isNotNull();
+        assertThat(inboundMessageResponse.id()).isNotNull();
 
         ArgumentCaptor<InboundMessageEntity> captor = ArgumentCaptor.forClass(InboundMessageEntity.class);
         verify(inboundMessageRepository).save(captor.capture());
@@ -52,6 +61,8 @@ public class InboundMessagingServiceTest {
         assertThat(saved.getReceivedAt()).isNotNull();
         assertThat(saved.getCreatedAt()).isNotNull();
         assertThat(saved.getUpdatedAt()).isNotNull();
+
+        verifyNoMoreInteractions(inboundMessageRepository);
     }
 
     @Test
@@ -63,6 +74,13 @@ public class InboundMessagingServiceTest {
                 "hello",
                 provided
         );
+
+        when(inboundMessageRepository.save(any(InboundMessageEntity.class)))
+                .thenAnswer(invocation -> {
+                   InboundMessageEntity e = invocation.getArgument(0);
+                   if (e.getId() == null) e.setId(UUID.randomUUID());
+                   return e;
+                });
 
         InboundMessageResponse inboundMessageResponse = inboundMessageService.ingest(inboundMessageIngestRequest);
 

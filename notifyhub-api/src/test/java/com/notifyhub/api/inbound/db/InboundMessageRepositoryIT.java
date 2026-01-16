@@ -1,11 +1,13 @@
 package com.notifyhub.api.inbound.db;
 
 import com.notifyhub.api.inbound.domain.InboundMessageStatus;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.OffsetDateTime;
@@ -19,6 +21,14 @@ public class InboundMessageRepositoryIT {
 
     @Autowired
     InboundMessageRepository repository;
+
+    @Autowired
+    JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    void clean() {
+        jdbcTemplate.execute("truncate table inbound_message");
+    }
 
     @Test
     void findAllByOrderByReceivedAtDesc_returnsNewestFirst() {

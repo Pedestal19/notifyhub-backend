@@ -44,3 +44,28 @@ If Testcontainers fails in IntelliJ but works in Maven, confirm:
 - IntelliJ is allowed to access Docker
 - Tests run with the same JDK as Maven (Java 17)
 
+## 3) Controller integration tests (MockMvc)
+
+We use `@SpringBootTest` + `@AutoConfigureMockMvc` to test:
+
+- request validation (`@Valid`)
+- controller routing
+- service + repository wiring
+- Flyway-managed schema against a real Postgres instance
+
+Tests run against local docker-compose Postgres on `localhost:5433` (profile: `test`).
+Each test truncates `inbound_message` to avoid flakiness from leftover data.
+
+### Running tests
+
+Unit tests:
+- `mvn -pl notifyhub-api test`
+
+Integration tests (Mode A, docker-compose):
+1. Start DB: `docker compose up -d`
+2. Run: `mvn -pl notifyhub-api test`
+
+Note:
+- Integration tests assume Postgres is reachable at `localhost:5433` under the `test` profile.
+- Tests truncate tables to avoid flaky ordering assertions.
+

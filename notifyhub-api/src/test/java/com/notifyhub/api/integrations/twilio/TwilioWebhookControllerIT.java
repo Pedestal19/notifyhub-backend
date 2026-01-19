@@ -44,10 +44,12 @@ public class TwilioWebhookControllerIT {
 
     @Test
     void ingest_createRow_andReturns201() throws Exception {
-
         mockMvc.perform(post("/webhooks/twilio")
                         .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                        .content("From=%2B2348012345678&To=%2B2348000000000&Body=hello&MessageSid=SM123"))
+                        .param("From", "+2348012345678")
+                        .param("To", "+2348000000000")
+                        .param("Body", "hello")
+                        .param("MessageSid", "SM123"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("RECEIVED"));
 
@@ -57,5 +59,21 @@ public class TwilioWebhookControllerIT {
         assertThat(saved.getPhoneNumber()).isEqualTo("+2348012345678");
         assertThat(saved.getBody()).isEqualTo("hello");
         assertThat(saved.getStatus()).isEqualTo(InboundMessageStatus.RECEIVED);
+    }
+
+    @Test
+    void inbound_returns400_whenFromMissing() throws Exception {
+        mockMvc.perform(post("/webhooks/twilio")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("Body", "hello"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void inbound_returns400_whenBodyMissing() throws Exception {
+        mockMvc.perform(post("/webhooks/twilio")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("From", "+2348012345678"))
+                .andExpect(status().isBadRequest());
     }
 }

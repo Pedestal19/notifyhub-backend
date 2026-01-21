@@ -4,15 +4,19 @@ spring:
     username: notifyhub
     password: notifyhub
     driver-class-name: org.postgresql.Driver
+  flyway:
+    enabled: false
   jpa:
     hibernate:
       ddl-auto: validate
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
   sql:
     init:
       mode: never
 
 server:
   port: 8081
+
+notifyhub:
+  worker:
+    poll-delay-ms: 5000
+

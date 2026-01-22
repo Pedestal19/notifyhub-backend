@@ -24,17 +24,23 @@ public class InboundMessageProcessor {
                 PageRequest.of(0, Math.min(limit, 100))
         );
 
-        for (var msg : page) {
-            msg.setStatus(InboundMessageStatus.PROCESSING);
-            msg.setUpdatedAt(OffsetDateTime.now());
-            inboundMessageRepository.save(msg);
+        var now = OffsetDateTime.now();
 
-            // v1 stub "work"
-            msg.setStatus(InboundMessageStatus.PROCESSED);
-            msg.setUpdatedAt(OffsetDateTime.now());
-            inboundMessageRepository.save(msg);
-        }
+        var msgs = page.getContent();
+        msgs.forEach(m -> {
+            m.setStatus(InboundMessageStatus.PROCESSING);
+            m.setUpdatedAt(now);
+        });
+        inboundMessageRepository.saveAll(msgs);
 
-        return page.getNumberOfElements();
+        // v1 stub work (later: call processor/handler)
+        var doneAt = OffsetDateTime.now();
+        msgs.forEach(m -> {
+            m.setStatus(InboundMessageStatus.PROCESSED);
+            m.setUpdatedAt(doneAt);
+        });
+        inboundMessageRepository.saveAll(msgs);
+
+        return msgs.size();
     }
 }

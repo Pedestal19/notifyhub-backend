@@ -69,3 +69,17 @@ Note:
 - Integration tests assume Postgres is reachable at `localhost:5433` under the `test` profile.
 - Tests truncate tables to avoid flaky ordering assertions.
 
+### Worker tests
+
+The worker service maintains its own test coverage:
+
+- Unit tests:
+  - Processor logic (status transitions, batching behavior)
+  - No Spring context
+  - Uses Mockito + AssertJ
+
+- Integration tests:
+  - Verifies database state transitions (RECEIVED → PROCESSED)
+  - Uses real Postgres (docker-compose in dev)
+  - Cleans tables in @BeforeEach to ensure isolation
+

@@ -12,11 +12,11 @@ spring:
   sql:
     init:
       mode: never
-
 server:
   port: 8081
-
 notifyhub:
   worker:
     poll-delay-ms: 5000
-
+logging:
+  level:
+    com.notifyhub.worker.service.InboundMessageProcessor: DEBUG

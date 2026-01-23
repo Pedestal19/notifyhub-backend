@@ -14,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import java.time.OffsetDateTime;
 import java.util.List;
 
+import static com.notifyhub.worker.inbound.domain.InboundMessageStatus.RECEIVED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyIterable;
 import static org.mockito.Mockito.any;
@@ -36,14 +37,14 @@ public class InboundMessageProcessorTest {
     void processBatch_movesReceivedToProcessed() {
 
         var m1 = InboundMessageEntity.builder()
-                .status(InboundMessageStatus.RECEIVED)
+                .status(RECEIVED)
                 .updatedAt(OffsetDateTime.now().minusDays(1))
                 .receivedAt(OffsetDateTime.now().minusDays(2))
                 .createdAt(OffsetDateTime.now().minusDays(2))
                 .channel("SMS").phoneNumber("+1").body("a")
                 .build();
 
-        when(inboundMessageRepository.findByStatusOrderByReceivedAtAsc(eq(InboundMessageStatus.RECEIVED), any(Pageable.class)))
+        when(inboundMessageRepository.findByStatusOrderByReceivedAtAsc(eq(RECEIVED), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(m1)));
 
         int processed = inboundMessageProcessor.processBatch(50);
@@ -53,10 +54,22 @@ public class InboundMessageProcessorTest {
         assertThat(m1.getUpdatedAt()).isNotNull();
 
         verify(inboundMessageRepository)
-                .findByStatusOrderByReceivedAtAsc(eq(InboundMessageStatus.RECEIVED), any(Pageable.class));
+                .findByStatusOrderByReceivedAtAsc(eq(RECEIVED), any(Pageable.class));
 
         verify(inboundMessageRepository, times(2)).saveAll(anyIterable());
 
         verifyNoMoreInteractions(inboundMessageRepository);
     }
+
+    @Test
+    void processBatch_returnsZero_whenNoMessages() {
+        when(inboundMessageRepository.findByStatusOrderByReceivedAtAsc(eq(RECEIVED), any()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        assertThat(inboundMessageProcessor.processBatch(50)).isEqualTo(0);
+
+        verify(inboundMessageRepository).findByStatusOrderByReceivedAtAsc(eq(RECEIVED), any());
+        verifyNoMoreInteractions(inboundMessageRepository);
+    }
+
 }

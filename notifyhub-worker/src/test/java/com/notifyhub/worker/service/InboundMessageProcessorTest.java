@@ -18,7 +18,11 @@ import static com.notifyhub.worker.inbound.domain.InboundMessageStatus.RECEIVED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyIterable;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.argThat;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -32,6 +36,10 @@ public class InboundMessageProcessorTest {
 
     @InjectMocks
     InboundMessageProcessor inboundMessageProcessor;
+
+    @Mock
+    InboundWorkHandler workHandler;
+
 
     @Test
     void processBatch_movesReceivedToProcessed() {
@@ -72,4 +80,55 @@ public class InboundMessageProcessorTest {
         verifyNoMoreInteractions(inboundMessageRepository);
     }
 
+    @Test
+    void processBatch_whenEmpty_returns0_andDoesNotSave() {
+        when(inboundMessageRepository.findByStatusOrderByReceivedAtAsc(eq(InboundMessageStatus.RECEIVED), any()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        int processed = inboundMessageProcessor.processBatch(50);
+
+        assertThat(processed).isEqualTo(0);
+
+        verify(inboundMessageRepository)
+                .findByStatusOrderByReceivedAtAsc(eq(InboundMessageStatus.RECEIVED), any());
+
+        verify(inboundMessageRepository, never()).saveAll(anyIterable());
+        verifyNoMoreInteractions(inboundMessageRepository);
+    }
+
+    @Test
+    void processBatch_whenWorkThrows_marksFailed_andContinues() {
+        var ok = InboundMessageEntity.builder()
+                .status(InboundMessageStatus.RECEIVED)
+                .channel("SMS").phoneNumber("+1").body("ok")
+                .receivedAt(OffsetDateTime.now().minusMinutes(2))
+                .createdAt(OffsetDateTime.now().minusMinutes(2))
+                .updatedAt(OffsetDateTime.now().minusMinutes(2))
+                .build();
+
+        var bad = InboundMessageEntity.builder()
+                .status(InboundMessageStatus.RECEIVED)
+                .channel("SMS").phoneNumber("+2").body("bad")
+                .receivedAt(OffsetDateTime.now().minusMinutes(1))
+                .createdAt(OffsetDateTime.now().minusMinutes(1))
+                .updatedAt(OffsetDateTime.now().minusMinutes(1))
+                .build();
+
+        when(inboundMessageRepository.findByStatusOrderByReceivedAtAsc(eq(InboundMessageStatus.RECEIVED), any()))
+                .thenReturn(new PageImpl<>(List.of(ok, bad)));
+
+        doNothing().when(workHandler).handle(any(InboundMessageEntity.class));
+
+        doThrow(new RuntimeException("boom"))
+                .when(workHandler)
+                .handle(argThat(m -> "bad".equals(m.getBody())));
+
+        int count = inboundMessageProcessor.processBatch(50);
+
+        assertThat(count).isEqualTo(2);
+        assertThat(ok.getStatus()).isEqualTo(InboundMessageStatus.PROCESSED);
+        assertThat(bad.getStatus()).isEqualTo(InboundMessageStatus.FAILED);
+
+        verify(inboundMessageRepository, times(2)).saveAll(anyIterable());
+    }
 }

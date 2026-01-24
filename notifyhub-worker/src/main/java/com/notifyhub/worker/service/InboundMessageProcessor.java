@@ -16,9 +16,11 @@ public class InboundMessageProcessor {
     private static final Logger log = LoggerFactory.getLogger(InboundMessageProcessor.class);
 
     private final InboundMessageRepository inboundMessageRepository;
+    private final InboundWorkHandler inboundWorkHandler;
 
-    public InboundMessageProcessor(InboundMessageRepository inboundMessageRepository) {
+    public InboundMessageProcessor(InboundMessageRepository inboundMessageRepository, InboundWorkHandler inboundWorkHandler) {
         this.inboundMessageRepository = inboundMessageRepository;
+        this.inboundWorkHandler = inboundWorkHandler;
     }
 
     @Transactional
@@ -46,12 +48,21 @@ public class InboundMessageProcessor {
         // v1 stub work (later: call processor/handler)
         var doneAt = OffsetDateTime.now();
         msgs.forEach(m -> {
-            m.setStatus(InboundMessageStatus.PROCESSED);
+            try {
+                inboundWorkHandler.handle(m);
+                m.setStatus(InboundMessageStatus.PROCESSED);
+            } catch (Exception ex) {
+                log.warn("Processing failed for message id={}", m.getId(), ex);
+                m.setStatus(InboundMessageStatus.FAILED);
+            }
             m.setUpdatedAt(doneAt);
         });
         inboundMessageRepository.saveAll(msgs);
 
-        log.info("Processed {} messages (RECEIVED -> PROCESSED)", msgs.size());
+        log.info("Finished batch: processed={} failed={}",
+                msgs.stream().filter(x -> x.getStatus() == InboundMessageStatus.PROCESSED).count(),
+                msgs.stream().filter(x -> x.getStatus() == InboundMessageStatus.FAILED).count()
+        );
         return msgs.size();
     }
 }

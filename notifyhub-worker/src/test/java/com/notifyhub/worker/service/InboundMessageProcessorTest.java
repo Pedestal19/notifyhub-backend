@@ -117,9 +117,7 @@ public class InboundMessageProcessorTest {
         when(inboundMessageRepository.findByStatusOrderByReceivedAtAsc(eq(InboundMessageStatus.RECEIVED), any()))
                 .thenReturn(new PageImpl<>(List.of(ok, bad)));
 
-        // default: succeed for everything
         doNothing().when(workHandler).handle(any(InboundMessageEntity.class));
-        // only "bad" fails (match by data)
         doThrow(new RuntimeException("boom"))
                 .when(workHandler)
                 .handle(argThat(m -> "bad".equals(m.getBody())));

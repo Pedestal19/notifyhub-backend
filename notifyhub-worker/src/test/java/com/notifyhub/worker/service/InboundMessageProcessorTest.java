@@ -117,8 +117,9 @@ public class InboundMessageProcessorTest {
         when(inboundMessageRepository.findByStatusOrderByReceivedAtAsc(eq(InboundMessageStatus.RECEIVED), any()))
                 .thenReturn(new PageImpl<>(List.of(ok, bad)));
 
+        // default: succeed for everything
         doNothing().when(workHandler).handle(any(InboundMessageEntity.class));
-
+        // only "bad" fails (match by data)
         doThrow(new RuntimeException("boom"))
                 .when(workHandler)
                 .handle(argThat(m -> "bad".equals(m.getBody())));
@@ -129,6 +130,10 @@ public class InboundMessageProcessorTest {
         assertThat(ok.getStatus()).isEqualTo(InboundMessageStatus.PROCESSED);
         assertThat(bad.getStatus()).isEqualTo(InboundMessageStatus.FAILED);
 
+        verify(inboundMessageRepository)
+                .findByStatusOrderByReceivedAtAsc(eq(InboundMessageStatus.RECEIVED), any());
         verify(inboundMessageRepository, times(2)).saveAll(anyIterable());
+
+        verify(workHandler, times(2)).handle(any(InboundMessageEntity.class));
     }
 }

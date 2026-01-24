@@ -21,4 +21,10 @@ public interface InboundMessageRepository extends JpaRepository<InboundMessageEn
     long countByReceivedAtAfter(OffsetDateTime after);
 
     Page<InboundMessageEntity> findByStatusOrderByReceivedAtAsc(InboundMessageStatus status, Pageable pageable);
+
+    Page<InboundMessageEntity> findByStatusAndUpdatedAtBeforeOrderByReceivedAtAsc(
+            InboundMessageStatus status,
+            OffsetDateTime cutoff,
+            Pageable pageable
+    );
 }

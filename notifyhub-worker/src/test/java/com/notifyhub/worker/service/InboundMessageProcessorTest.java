@@ -134,4 +134,33 @@ public class InboundMessageProcessorTest {
 
         verify(workHandler, times(2)).handle(any(InboundMessageEntity.class));
     }
+
+    @Test
+    void processBatch_whenReceivedEmpty_butStuckProcessingExists_processesStuck() {
+        var stuck = InboundMessageEntity.builder()
+                .status(InboundMessageStatus.PROCESSING)
+                .channel("SMS").phoneNumber("+2").body("stuck")
+                .receivedAt(OffsetDateTime.now().minusMinutes(10))
+                .createdAt(OffsetDateTime.now().minusMinutes(10))
+                .updatedAt(OffsetDateTime.now().minusMinutes(10))
+                .build();
+
+        when(inboundMessageRepository.findByStatusOrderByReceivedAtAsc(eq(RECEIVED), any()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        when(inboundMessageRepository.findByStatusAndUpdatedAtBeforeOrderByReceivedAtAsc(
+                eq(InboundMessageStatus.PROCESSING), any(), any()
+        )).thenReturn(new PageImpl<>(List.of(stuck)));
+
+        doNothing().when(workHandler).handle(any(InboundMessageEntity.class));
+
+        int count = inboundMessageProcessor.processBatch(50);
+
+        assertThat(count).isEqualTo(1);
+        assertThat(stuck.getStatus()).isEqualTo(InboundMessageStatus.PROCESSED);
+
+        verify(inboundMessageRepository).findByStatusOrderByReceivedAtAsc(eq(RECEIVED), any());
+        verify(inboundMessageRepository).findByStatusAndUpdatedAtBeforeOrderByReceivedAtAsc(eq(InboundMessageStatus.PROCESSING), any(), any());
+        verify(inboundMessageRepository, times(2)).saveAll(anyIterable());
+    }
 }

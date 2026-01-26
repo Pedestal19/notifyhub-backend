@@ -54,6 +54,11 @@ public class InboundMessageProcessorTest {
 
         when(inboundMessageRepository.findByStatusOrderByReceivedAtAsc(eq(RECEIVED), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(m1)));
+        when(inboundMessageRepository.findByStatusAndUpdatedAtBeforeOrderByReceivedAtAsc(
+                eq(InboundMessageStatus.PROCESSING),
+                any(),
+                any(Pageable.class)
+        )).thenReturn(new PageImpl<>(List.of()));
 
         int processed = inboundMessageProcessor.processBatch(50);
 
@@ -73,6 +78,11 @@ public class InboundMessageProcessorTest {
     void processBatch_returnsZero_whenNoMessages() {
         when(inboundMessageRepository.findByStatusOrderByReceivedAtAsc(eq(RECEIVED), any()))
                 .thenReturn(new PageImpl<>(List.of()));
+        when(inboundMessageRepository.findByStatusAndUpdatedAtBeforeOrderByReceivedAtAsc(
+                eq(InboundMessageStatus.PROCESSING),
+                any(),
+                any(Pageable.class)
+        )).thenReturn(new PageImpl<>(List.of()));
 
         assertThat(inboundMessageProcessor.processBatch(50)).isEqualTo(0);
 
@@ -84,6 +94,11 @@ public class InboundMessageProcessorTest {
     void processBatch_whenEmpty_returns0_andDoesNotSave() {
         when(inboundMessageRepository.findByStatusOrderByReceivedAtAsc(eq(InboundMessageStatus.RECEIVED), any()))
                 .thenReturn(new PageImpl<>(List.of()));
+        when(inboundMessageRepository.findByStatusAndUpdatedAtBeforeOrderByReceivedAtAsc(
+                eq(InboundMessageStatus.PROCESSING),
+                any(),
+                any(Pageable.class)
+        )).thenReturn(new PageImpl<>(List.of()));
 
         int processed = inboundMessageProcessor.processBatch(50);
 
@@ -121,6 +136,11 @@ public class InboundMessageProcessorTest {
         doThrow(new RuntimeException("boom"))
                 .when(workHandler)
                 .handle(argThat(m -> "bad".equals(m.getBody())));
+        when(inboundMessageRepository.findByStatusAndUpdatedAtBeforeOrderByReceivedAtAsc(
+                eq(InboundMessageStatus.PROCESSING),
+                any(),
+                any(Pageable.class)
+        )).thenReturn(new PageImpl<>(List.of()));
 
         int count = inboundMessageProcessor.processBatch(50);
 
@@ -162,5 +182,31 @@ public class InboundMessageProcessorTest {
         verify(inboundMessageRepository).findByStatusOrderByReceivedAtAsc(eq(RECEIVED), any());
         verify(inboundMessageRepository).findByStatusAndUpdatedAtBeforeOrderByReceivedAtAsc(eq(InboundMessageStatus.PROCESSING), any(), any());
         verify(inboundMessageRepository, times(2)).saveAll(anyIterable());
+    }
+
+    @Test
+    void processBatch_neverProcessesMoreThanLimit() {
+        var now = OffsetDateTime.now();
+
+        var r1 = InboundMessageEntity.builder().status(RECEIVED).channel("SMS").phoneNumber("+1").body("r1")
+                .receivedAt(now.minusMinutes(3)).createdAt(now.minusMinutes(3)).updatedAt(now.minusMinutes(3)).build();
+
+        var r2 = InboundMessageEntity.builder().status(RECEIVED).channel("SMS").phoneNumber("+2").body("r2")
+                .receivedAt(now.minusMinutes(2)).createdAt(now.minusMinutes(2)).updatedAt(now.minusMinutes(2)).build();
+
+        var stuck = InboundMessageEntity.builder().status(InboundMessageStatus.PROCESSING).channel("SMS").phoneNumber("+3").body("stuck")
+                .receivedAt(now.minusMinutes(10)).createdAt(now.minusMinutes(10)).updatedAt(now.minusMinutes(10)).build();
+
+        when(inboundMessageRepository.findByStatusOrderByReceivedAtAsc(eq(RECEIVED), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(r1, r2)));
+
+        doNothing().when(workHandler).handle(any(InboundMessageEntity.class));
+
+        int count = inboundMessageProcessor.processBatch(2);
+
+        assertThat(count).isEqualTo(2);
+
+        verify(inboundMessageRepository, never())
+                .findByStatusAndUpdatedAtBeforeOrderByReceivedAtAsc(eq(InboundMessageStatus.PROCESSING), any(), any());
     }
 }

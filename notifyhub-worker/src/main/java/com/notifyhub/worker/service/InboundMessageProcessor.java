@@ -87,9 +87,10 @@ public class InboundMessageProcessor {
     }
 
     private void processMessages(List<InboundMessageEntity> msgs) {
-        var now = OffsetDateTime.now();
+        var processingAt = OffsetDateTime.now();
         msgs.forEach(m -> {
             m.setStatus(InboundMessageStatus.PROCESSING);
+            m.setUpdatedAt(processingAt);
         });
         inboundMessageRepository.saveAll(msgs);
 

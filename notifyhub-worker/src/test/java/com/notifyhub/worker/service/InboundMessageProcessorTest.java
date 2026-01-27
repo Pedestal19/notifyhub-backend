@@ -7,7 +7,6 @@ import com.notifyhub.worker.inbound.domain.InboundMessageStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
@@ -203,9 +202,6 @@ public class InboundMessageProcessorTest {
 
         var r2 = InboundMessageEntity.builder().status(RECEIVED).channel("SMS").phoneNumber("+2").body("r2")
                 .receivedAt(now.minusMinutes(2)).createdAt(now.minusMinutes(2)).updatedAt(now.minusMinutes(2)).build();
-
-        var stuck = InboundMessageEntity.builder().status(InboundMessageStatus.PROCESSING).channel("SMS").phoneNumber("+3").body("stuck")
-                .receivedAt(now.minusMinutes(10)).createdAt(now.minusMinutes(10)).updatedAt(now.minusMinutes(10)).build();
 
         when(inboundMessageRepository.findByStatusOrderByReceivedAtAsc(eq(RECEIVED), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(r1, r2)));

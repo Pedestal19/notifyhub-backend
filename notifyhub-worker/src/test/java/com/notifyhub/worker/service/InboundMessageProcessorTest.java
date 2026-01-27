@@ -1,8 +1,10 @@
 package com.notifyhub.worker.service;
 
+import com.notifyhub.worker.configuration.WorkerProperties;
 import com.notifyhub.worker.inbound.db.InboundMessageEntity;
 import com.notifyhub.worker.inbound.db.InboundMessageRepository;
 import com.notifyhub.worker.inbound.domain.InboundMessageStatus;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -11,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -34,11 +37,18 @@ public class InboundMessageProcessorTest {
     @Mock
     InboundMessageRepository inboundMessageRepository;
 
-    @InjectMocks
     InboundMessageProcessor inboundMessageProcessor;
 
     @Mock
     InboundWorkHandler workHandler;
+
+    private WorkerProperties props;
+
+    @BeforeEach
+    void setup() {
+        props = new WorkerProperties(100, Duration.ofMinutes(2), 500L);
+        inboundMessageProcessor = new InboundMessageProcessor(inboundMessageRepository, workHandler, props);
+    }
 
 
     @Test

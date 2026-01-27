@@ -1,5 +1,6 @@
 package com.notifyhub.worker.service;
 
+import com.notifyhub.worker.configuration.WorkerProperties;
 import com.notifyhub.worker.inbound.db.InboundMessageEntity;
 import com.notifyhub.worker.inbound.db.InboundMessageRepository;
 import com.notifyhub.worker.inbound.domain.InboundMessageStatus;
@@ -19,18 +20,17 @@ public class InboundMessageProcessor {
 
     private final InboundMessageRepository inboundMessageRepository;
     private final InboundWorkHandler inboundWorkHandler;
+    private final WorkerProperties props;
 
-    private final int maxPageSize = 100;
-    private final java.time.Duration retryAfter = java.time.Duration.ofMinutes(2);
-
-    public InboundMessageProcessor(InboundMessageRepository inboundMessageRepository, InboundWorkHandler inboundWorkHandler) {
+    public InboundMessageProcessor(InboundMessageRepository inboundMessageRepository, InboundWorkHandler inboundWorkHandler, WorkerProperties props) {
         this.inboundMessageRepository = inboundMessageRepository;
         this.inboundWorkHandler = inboundWorkHandler;
+        this.props = props;
     }
 
     @Transactional
     public int processBatch(int limit) {
-        int effectiveLimit = Math.min(limit, maxPageSize);
+        int effectiveLimit = Math.min(limit, props.maxPageSize());
         if (effectiveLimit <= 0) return 0;
 
         int processedTotal = 0;
@@ -42,9 +42,11 @@ public class InboundMessageProcessor {
         }
 
         if (processedTotal == 0) {
-            log.debug("No messages to process (RECEIVED empty, no stuck PROCESSING)");
+            log.debug("No messages to process (limit={}, maxPageSize={}, retryAfter={})",
+                    limit, props.maxPageSize(), props.retryAfter());
         } else {
-            log.info("Batch done. totalProcessed={}", processedTotal);
+            log.info("Batch done. totalProcessed={} (limit={}, maxPageSize={})",
+                    processedTotal, limit, props.maxPageSize());
         }
 
         return processedTotal;
@@ -70,7 +72,7 @@ public class InboundMessageProcessor {
         if (remaining <= 0) return 0;
 
         var now = OffsetDateTime.now();
-        var cutoff = now.minus(retryAfter);
+        var cutoff = now.minus(props.retryAfter());
 
         var page = inboundMessageRepository.findByStatusAndUpdatedAtBeforeOrderByReceivedAtAsc(
                 InboundMessageStatus.PROCESSING,
@@ -81,7 +83,8 @@ public class InboundMessageProcessor {
         var msgs = page.getContent();
         if (msgs.isEmpty()) return 0;
 
-        log.warn("Retrying {} stuck PROCESSING messages (cutoff={})", msgs.size(), cutoff);
+        log.warn("Retrying {} stuck PROCESSING messages (cutoff={}, remaining={})",
+                msgs.size(), cutoff, remaining);
         processMessages(msgs);
         return msgs.size();
     }

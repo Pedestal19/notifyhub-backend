@@ -4,7 +4,6 @@ import com.notifyhub.worker.configuration.WorkerProperties;
 import com.notifyhub.worker.inbound.db.InboundMessageEntity;
 import com.notifyhub.worker.inbound.db.InboundMessageRepository;
 import com.notifyhub.worker.inbound.domain.InboundMessageStatus;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;

@@ -9,8 +9,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
 
 import java.time.Duration;
 import java.time.OffsetDateTime;
@@ -18,15 +16,16 @@ import java.util.List;
 
 import static com.notifyhub.worker.inbound.domain.InboundMessageStatus.RECEIVED;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyIterable;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
@@ -35,24 +34,23 @@ public class InboundMessageProcessorTest {
 
     @Mock
     InboundMessageRepository inboundMessageRepository;
-
     InboundMessageProcessor inboundMessageProcessor;
-
     @Mock
     InboundWorkHandler workHandler;
+    @Mock InboundMessageClaimer claimer;
+
 
     private WorkerProperties props;
 
     @BeforeEach
     void setup() {
         props = new WorkerProperties(100, Duration.ofMinutes(2), 500L);
-        inboundMessageProcessor = new InboundMessageProcessor(inboundMessageRepository, workHandler, props);
+        inboundMessageProcessor = new InboundMessageProcessor(inboundMessageRepository, workHandler, props, claimer);
     }
 
 
     @Test
-    void processBatch_movesReceivedToProcessed() {
-
+    void processBatch_movesClaimedReceivedToProcessed() {
         var m1 = InboundMessageEntity.builder()
                 .status(RECEIVED)
                 .updatedAt(OffsetDateTime.now().minusDays(1))
@@ -61,111 +59,44 @@ public class InboundMessageProcessorTest {
                 .channel("SMS").phoneNumber("+1").body("a")
                 .build();
 
-        when(inboundMessageRepository.findByStatusOrderByReceivedAtAsc(eq(RECEIVED), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(m1)));
-        when(inboundMessageRepository.findByStatusAndUpdatedAtBeforeOrderByReceivedAtAsc(
-                eq(InboundMessageStatus.PROCESSING),
-                any(),
-                any(Pageable.class)
-        )).thenReturn(new PageImpl<>(List.of()));
+        // Step 8: processor calls claimer, not repo queries
+        when(claimer.claimReceived(50)).thenReturn(List.of(m1));
 
-        int processed = inboundMessageProcessor.processBatch(50);
+        doNothing().when(workHandler).handle(any(InboundMessageEntity.class));
 
-        assertThat(processed).isEqualTo(1);
+        int claimed = inboundMessageProcessor.processBatch(50);
+
+        assertThat(claimed).isEqualTo(1);
         assertThat(m1.getStatus()).isEqualTo(InboundMessageStatus.PROCESSED);
         assertThat(m1.getUpdatedAt()).isNotNull();
 
-        verify(inboundMessageRepository)
-                .findByStatusOrderByReceivedAtAsc(eq(RECEIVED), any(Pageable.class));
+        verify(claimer).claimReceived(50);
+        verify(claimer, never()).claimStuckProcessing(anyInt());
 
-        verify(inboundMessageRepository, times(2)).saveAll(anyIterable());
-
+        verify(workHandler).handle(m1);
+        verify(inboundMessageRepository).saveAll(anyIterable());
         verifyNoMoreInteractions(inboundMessageRepository);
     }
 
     @Test
-    void processBatch_returnsZero_whenNoMessages() {
-        when(inboundMessageRepository.findByStatusOrderByReceivedAtAsc(eq(RECEIVED), any()))
-                .thenReturn(new PageImpl<>(List.of()));
-        when(inboundMessageRepository.findByStatusAndUpdatedAtBeforeOrderByReceivedAtAsc(
-                eq(InboundMessageStatus.PROCESSING),
-                any(),
-                any(Pageable.class)
-        )).thenReturn(new PageImpl<>(List.of()));
+    void processBatch_returnsZero_whenNoMessagesClaimed() {
+        when(claimer.claimReceived(50)).thenReturn(List.of());
+        when(claimer.claimStuckProcessing(50)).thenReturn(List.of());
 
-        assertThat(inboundMessageProcessor.processBatch(50)).isEqualTo(0);
+        int claimed = inboundMessageProcessor.processBatch(50);
 
-        verify(inboundMessageRepository).findByStatusOrderByReceivedAtAsc(eq(RECEIVED), any());
-        verifyNoMoreInteractions(inboundMessageRepository);
-    }
+        assertThat(claimed).isEqualTo(0);
 
-    @Test
-    void processBatch_whenEmpty_returns0_andDoesNotSave() {
-        when(inboundMessageRepository.findByStatusOrderByReceivedAtAsc(eq(InboundMessageStatus.RECEIVED), any()))
-                .thenReturn(new PageImpl<>(List.of()));
-        when(inboundMessageRepository.findByStatusAndUpdatedAtBeforeOrderByReceivedAtAsc(
-                eq(InboundMessageStatus.PROCESSING),
-                any(),
-                any(Pageable.class)
-        )).thenReturn(new PageImpl<>(List.of()));
+        verify(claimer).claimReceived(50);
+        verify(claimer).claimStuckProcessing(50);
 
-        int processed = inboundMessageProcessor.processBatch(50);
-
-        assertThat(processed).isEqualTo(0);
-
-        verify(inboundMessageRepository)
-                .findByStatusOrderByReceivedAtAsc(eq(InboundMessageStatus.RECEIVED), any());
-
+        verifyNoInteractions(workHandler);
         verify(inboundMessageRepository, never()).saveAll(anyIterable());
         verifyNoMoreInteractions(inboundMessageRepository);
     }
 
     @Test
-    void processBatch_whenWorkThrows_marksFailed_andContinues() {
-        var ok = InboundMessageEntity.builder()
-                .status(InboundMessageStatus.RECEIVED)
-                .channel("SMS").phoneNumber("+1").body("ok")
-                .receivedAt(OffsetDateTime.now().minusMinutes(2))
-                .createdAt(OffsetDateTime.now().minusMinutes(2))
-                .updatedAt(OffsetDateTime.now().minusMinutes(2))
-                .build();
-
-        var bad = InboundMessageEntity.builder()
-                .status(InboundMessageStatus.RECEIVED)
-                .channel("SMS").phoneNumber("+2").body("bad")
-                .receivedAt(OffsetDateTime.now().minusMinutes(1))
-                .createdAt(OffsetDateTime.now().minusMinutes(1))
-                .updatedAt(OffsetDateTime.now().minusMinutes(1))
-                .build();
-
-        when(inboundMessageRepository.findByStatusOrderByReceivedAtAsc(eq(InboundMessageStatus.RECEIVED), any()))
-                .thenReturn(new PageImpl<>(List.of(ok, bad)));
-
-        doNothing().when(workHandler).handle(any(InboundMessageEntity.class));
-        doThrow(new RuntimeException("boom"))
-                .when(workHandler)
-                .handle(argThat(m -> "bad".equals(m.getBody())));
-        when(inboundMessageRepository.findByStatusAndUpdatedAtBeforeOrderByReceivedAtAsc(
-                eq(InboundMessageStatus.PROCESSING),
-                any(),
-                any(Pageable.class)
-        )).thenReturn(new PageImpl<>(List.of()));
-
-        int count = inboundMessageProcessor.processBatch(50);
-
-        assertThat(count).isEqualTo(2);
-        assertThat(ok.getStatus()).isEqualTo(InboundMessageStatus.PROCESSED);
-        assertThat(bad.getStatus()).isEqualTo(InboundMessageStatus.FAILED);
-
-        verify(inboundMessageRepository)
-                .findByStatusOrderByReceivedAtAsc(eq(InboundMessageStatus.RECEIVED), any());
-        verify(inboundMessageRepository, times(2)).saveAll(anyIterable());
-
-        verify(workHandler, times(2)).handle(any(InboundMessageEntity.class));
-    }
-
-    @Test
-    void processBatch_whenReceivedEmpty_butStuckProcessingExists_processesStuck() {
+    void processBatch_whenReceivedEmpty_butStuckClaimed_processesStuck() {
         var stuck = InboundMessageEntity.builder()
                 .status(InboundMessageStatus.PROCESSING)
                 .channel("SMS").phoneNumber("+2").body("stuck")
@@ -174,45 +105,73 @@ public class InboundMessageProcessorTest {
                 .updatedAt(OffsetDateTime.now().minusMinutes(10))
                 .build();
 
-        when(inboundMessageRepository.findByStatusOrderByReceivedAtAsc(eq(RECEIVED), any()))
-                .thenReturn(new PageImpl<>(List.of()));
-
-        when(inboundMessageRepository.findByStatusAndUpdatedAtBeforeOrderByReceivedAtAsc(
-                eq(InboundMessageStatus.PROCESSING), any(), any()
-        )).thenReturn(new PageImpl<>(List.of(stuck)));
+        when(claimer.claimReceived(50)).thenReturn(List.of());
+        when(claimer.claimStuckProcessing(50)).thenReturn(List.of(stuck));
 
         doNothing().when(workHandler).handle(any(InboundMessageEntity.class));
 
-        int count = inboundMessageProcessor.processBatch(50);
+        int claimed = inboundMessageProcessor.processBatch(50);
 
-        assertThat(count).isEqualTo(1);
+        assertThat(claimed).isEqualTo(1);
         assertThat(stuck.getStatus()).isEqualTo(InboundMessageStatus.PROCESSED);
 
-        verify(inboundMessageRepository).findByStatusOrderByReceivedAtAsc(eq(RECEIVED), any());
-        verify(inboundMessageRepository).findByStatusAndUpdatedAtBeforeOrderByReceivedAtAsc(eq(InboundMessageStatus.PROCESSING), any(), any());
-        verify(inboundMessageRepository, times(2)).saveAll(anyIterable());
+        verify(claimer).claimReceived(50);
+        verify(claimer).claimStuckProcessing(50);
+        verify(workHandler).handle(stuck);
+        verify(inboundMessageRepository).saveAll(anyIterable());
     }
 
     @Test
-    void processBatch_neverProcessesMoreThanLimit() {
-        var now = OffsetDateTime.now();
+    void processBatch_whenWorkThrows_marksFailed_andContinues() {
+        var ok = InboundMessageEntity.builder()
+                .status(RECEIVED)
+                .channel("SMS").phoneNumber("+1").body("ok")
+                .receivedAt(OffsetDateTime.now().minusMinutes(2))
+                .createdAt(OffsetDateTime.now().minusMinutes(2))
+                .updatedAt(OffsetDateTime.now().minusMinutes(2))
+                .build();
 
-        var r1 = InboundMessageEntity.builder().status(RECEIVED).channel("SMS").phoneNumber("+1").body("r1")
-                .receivedAt(now.minusMinutes(3)).createdAt(now.minusMinutes(3)).updatedAt(now.minusMinutes(3)).build();
+        var bad = InboundMessageEntity.builder()
+                .status(RECEIVED)
+                .channel("SMS").phoneNumber("+2").body("bad")
+                .receivedAt(OffsetDateTime.now().minusMinutes(1))
+                .createdAt(OffsetDateTime.now().minusMinutes(1))
+                .updatedAt(OffsetDateTime.now().minusMinutes(1))
+                .build();
 
-        var r2 = InboundMessageEntity.builder().status(RECEIVED).channel("SMS").phoneNumber("+2").body("r2")
-                .receivedAt(now.minusMinutes(2)).createdAt(now.minusMinutes(2)).updatedAt(now.minusMinutes(2)).build();
+        when(claimer.claimReceived(50)).thenReturn(List.of(ok, bad));
 
-        when(inboundMessageRepository.findByStatusOrderByReceivedAtAsc(eq(RECEIVED), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(r1, r2)));
+        doNothing().when(workHandler).handle(any(InboundMessageEntity.class));
+        doThrow(new RuntimeException("boom"))
+                .when(workHandler).handle(argThat(m -> "bad".equals(m.getBody())));
+
+        int claimed = inboundMessageProcessor.processBatch(50);
+
+        assertThat(claimed).isEqualTo(2);
+        assertThat(ok.getStatus()).isEqualTo(InboundMessageStatus.PROCESSED);
+        assertThat(bad.getStatus()).isEqualTo(InboundMessageStatus.FAILED);
+
+        verify(workHandler, times(2)).handle(any(InboundMessageEntity.class));
+        verify(inboundMessageRepository).saveAll(anyIterable());
+    }
+
+    @Test
+    void processBatch_neverClaimsMoreThanLimit() {
+        // Explain-like-I'm-5:
+        // If you pass limit=2, processor must ask the claimer for 2 (not 100).
+        when(claimer.claimReceived(2)).thenReturn(List.of(
+                InboundMessageEntity.builder().status(RECEIVED).body("r1").channel("SMS").phoneNumber("+1")
+                        .receivedAt(OffsetDateTime.now()).createdAt(OffsetDateTime.now()).updatedAt(OffsetDateTime.now()).build(),
+                InboundMessageEntity.builder().status(RECEIVED).body("r2").channel("SMS").phoneNumber("+2")
+                        .receivedAt(OffsetDateTime.now()).createdAt(OffsetDateTime.now()).updatedAt(OffsetDateTime.now()).build()
+        ));
 
         doNothing().when(workHandler).handle(any(InboundMessageEntity.class));
 
-        int count = inboundMessageProcessor.processBatch(2);
+        int claimed = inboundMessageProcessor.processBatch(2);
 
-        assertThat(count).isEqualTo(2);
-
-        verify(inboundMessageRepository, never())
-                .findByStatusAndUpdatedAtBeforeOrderByReceivedAtAsc(eq(InboundMessageStatus.PROCESSING), any(), any());
+        assertThat(claimed).isEqualTo(2);
+        verify(claimer).claimReceived(2);
+        verify(claimer, never()).claimStuckProcessing(anyInt());
     }
 }

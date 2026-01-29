@@ -1,9 +1,8 @@
-package com.notifyhub.worker;
+package com.notifyhub.worker.service;
 
 import com.notifyhub.worker.inbound.db.InboundMessageEntity;
 import com.notifyhub.worker.inbound.db.InboundMessageRepository;
 import com.notifyhub.worker.inbound.domain.InboundMessageStatus;
-import com.notifyhub.worker.service.InboundMessageProcessor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,4 +1,4 @@
-package com.notifyhub.worker;
+package com.notifyhub.worker.service;
 
 import com.notifyhub.worker.inbound.db.InboundMessageEntity;
 import com.notifyhub.worker.inbound.db.InboundMessageRepository;

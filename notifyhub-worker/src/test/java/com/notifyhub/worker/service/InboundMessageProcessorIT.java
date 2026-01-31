@@ -7,29 +7,52 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.OffsetDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doNothing;
 
-@ActiveProfiles("test")
+@Testcontainers
 @SpringBootTest
 public class InboundMessageProcessorIT {
 
-    @Autowired
-    InboundMessageRepository inboundMessageRepository;
-    @Autowired
-    InboundMessageProcessor inboundMessageProcessor;
-    @Autowired
-    JdbcTemplate jdbcTemplate;
+    @Container
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16");
+
+    @DynamicPropertySource
+    static void props(DynamicPropertyRegistry r) {
+        r.add("spring.datasource.url", postgres::getJdbcUrl);
+        r.add("spring.datasource.username", postgres::getUsername);
+        r.add("spring.datasource.password", postgres::getPassword);
+
+        r.add("spring.jpa.hibernate.ddl-auto", () -> "update");
+
+        r.add("notifyhub.worker.max-page-size", () -> "100");
+        r.add("notifyhub.worker.retry-after", () -> "PT2M");
+        r.add("notifyhub.worker.poll-delay-ms", () -> "500");
+    }
+
+    @Autowired InboundMessageRepository repo;
+    @Autowired InboundMessageProcessor processor;
+
+    @MockBean InboundWorkHandler workHandler;
 
     @BeforeEach
-    void clean() { jdbcTemplate.execute("truncate table inbound_message"); }
+    void clean() {
+        repo.deleteAll();
+    }
 
     @Test
     void processor_updatesDbStatuses() {
+        doNothing().when(workHandler).handle(org.mockito.ArgumentMatchers.any());
+
         var msg = InboundMessageEntity.builder()
                 .channel("SMS")
                 .phoneNumber("+234...")
@@ -40,11 +63,12 @@ public class InboundMessageProcessorIT {
                 .updatedAt(OffsetDateTime.now())
                 .build();
 
-        var saved = inboundMessageRepository.save(msg);
+        var saved = repo.save(msg);
 
-        inboundMessageProcessor.processBatch(50);
+        int claimed = processor.processBatch(50);
+        assertThat(claimed).isEqualTo(1);
 
-        var reloaded = inboundMessageRepository.findById(saved.getId()).orElseThrow();
+        var reloaded = repo.findById(saved.getId()).orElseThrow();
         assertThat(reloaded.getStatus()).isEqualTo(InboundMessageStatus.PROCESSED);
     }
 }

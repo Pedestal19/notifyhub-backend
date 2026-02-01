@@ -19,6 +19,7 @@ notifyhub:
     poll-delay-ms: 5000
     max-page-size: 100
     retry-after: PT2M
+    batch-size: 50
 logging:
   level:
     com.notifyhub.worker.service.InboundMessageProcessor: DEBUG

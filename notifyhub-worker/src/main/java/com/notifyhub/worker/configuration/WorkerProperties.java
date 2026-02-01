@@ -8,6 +8,7 @@ import java.time.Duration;
 public record WorkerProperties(
         int maxPageSize,
         Duration retryAfter,
-        long pollDelayMs
+        long pollDelayMs,
+        int batchSize
 ) {
 }

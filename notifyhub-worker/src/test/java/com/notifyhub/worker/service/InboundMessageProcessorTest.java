@@ -44,7 +44,7 @@ public class InboundMessageProcessorTest {
 
     @BeforeEach
     void setup() {
-        props = new WorkerProperties(100, Duration.ofMinutes(2), 500L);
+        props = new WorkerProperties(100, Duration.ofMinutes(2), 500L, 20);
         inboundMessageProcessor = new InboundMessageProcessor(inboundMessageRepository, workHandler, props, claimer);
     }
 

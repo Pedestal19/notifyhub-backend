@@ -17,10 +17,13 @@ public class InboundMessageJob {
     private final InboundMessageProcessor inboundMessageProcessor;
     private final WorkerProperties props;
     private final AtomicBoolean running = new AtomicBoolean(false);
+    private final InboundWorkerStats stats;
 
-    public InboundMessageJob(InboundMessageProcessor inboundMessageProcessor, WorkerProperties props) {
+
+    public InboundMessageJob(InboundMessageProcessor inboundMessageProcessor, WorkerProperties props, InboundWorkerStats stats) {
         this.inboundMessageProcessor = inboundMessageProcessor;
         this.props = props;
+        this.stats = stats;
     }
 
     @Scheduled(fixedDelayString = "${notifyhub.worker.poll-delay-ms:5000}")
@@ -34,8 +37,11 @@ public class InboundMessageJob {
         try {
             int claimed = inboundMessageProcessor.processBatch(props.batchSize());
             long ms = (System.nanoTime() - start) / 1_000_000;
+            stats.recordSuccess(claimed, 0, ms);
             log.info("Worker tick done: claimed={} durationMs={}", claimed, ms);
         } catch (Exception ex) {
+            long ms = (System.nanoTime() - start) / 1_000_000;
+            stats.recordFailure(ex, ms);
             log.error("Worker tick failed", ex);
         } finally {
             running.set(false);

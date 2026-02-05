@@ -17,6 +17,6 @@ public class WorkerConfig {
 
     @Bean
     public InboundWorkerStats inboundWorkerStats() {
-        return new InboundWorkerStats();
+        return new InboundWorkerStats(clock);
     }
 }

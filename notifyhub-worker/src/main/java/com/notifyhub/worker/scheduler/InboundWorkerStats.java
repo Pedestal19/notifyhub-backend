@@ -1,40 +1,48 @@
 package com.notifyhub.worker.scheduler;
 
+import com.notifyhub.worker.service.BatchResult;
 import lombok.Getter;
 
-import java.time.OffsetDateTime;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Getter
 public class InboundWorkerStats {
 
-    private final AtomicReference<OffsetDateTime> lastRunAt = new AtomicReference<>();
+    private final Clock clock;
+
+    private final AtomicReference<Instant> lastRunAt = new AtomicReference<>(null);
+    private final AtomicReference<Instant> lastSuccessAt = new AtomicReference<>(null);
+    private final AtomicReference<Instant> lastFailureAt = new AtomicReference<>(null);
+
     private final AtomicLong lastDurationMs = new AtomicLong(0);
     private final AtomicLong lastClaimed = new AtomicLong(0);
+    private final AtomicLong lastProcessed = new AtomicLong(0);
     private final AtomicLong lastFailed = new AtomicLong(0);
-
-    private final AtomicLong totalClaimed = new AtomicLong(0);
-    private final AtomicLong totalFailed = new AtomicLong(0);
 
     private final AtomicReference<Throwable> lastError = new AtomicReference<>();
 
-    public void recordSuccess(long claimed, long failed, long durationMs) {
-        lastRunAt.set(OffsetDateTime.now());
-        lastDurationMs.set(durationMs);
-
-        lastClaimed.set(claimed);
-        lastFailed.set(failed);
-
-        totalClaimed.addAndGet(claimed);
-        totalFailed.addAndGet(failed);
-
-        lastError.set(null);
+    public InboundWorkerStats(Clock clock) {
+        this.clock = clock;
     }
 
-    public void recordFailure(Throwable t, long durationMs) {
-        lastRunAt.set(OffsetDateTime.now());
+    public void recordSuccess(BatchResult result, long durationMs) {
+        Instant now = clock.instant();
+        lastRunAt.set(now);
+        lastSuccessAt.set(now);
+
         lastDurationMs.set(durationMs);
-        lastError.set(t);
+        lastClaimed.set(result.claimed());
+        lastProcessed.set(result.processed());
+        lastFailed.set(result.failed());
+    }
+
+    public void recordFailure(long durationMs) {
+        Instant now = clock.instant();
+        lastRunAt.set(now);
+        lastFailureAt.set(now);
+        lastDurationMs.set(durationMs);
     }
 }

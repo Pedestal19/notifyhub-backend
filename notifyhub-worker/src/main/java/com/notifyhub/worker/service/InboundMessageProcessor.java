@@ -31,9 +31,9 @@ public class InboundMessageProcessor {
     }
 
     @Transactional
-    public int processBatch(int limit) {
+    public BatchResult processBatch(int limit) {
         int effectiveLimit = Math.min(limit, props.maxPageSize());
-        if (effectiveLimit <= 0) return 0;
+        if (effectiveLimit <= 0) return BatchResult.EMPTY;;
 
         List<InboundMessageEntity> claimed = claimer.claimReceived(effectiveLimit);
 
@@ -41,26 +41,37 @@ public class InboundMessageProcessor {
             claimed = claimer.claimStuckProcessing(effectiveLimit);
         }
 
-        if (claimed.isEmpty()) return 0;
+        if (claimed.isEmpty()) return BatchResult.EMPTY;
 
-        finalizeBatch(claimed);
+        BatchResult result = finalizeBatch(claimed);
 
-        return claimed.size();
+        log.info("Batch done. claimed={} processed={} failed={}",
+                result.claimed(), result.processed(), result.failed());
+
+        return result;
     }
 
     @Transactional
-    public void finalizeBatch(List<InboundMessageEntity> msgs) {
+    public BatchResult finalizeBatch(List<InboundMessageEntity> msgs) {
         var doneAt = OffsetDateTime.now();
 
-        for (var m : msgs) {
+        int processed = 0;
+        int failed = 0;
+
+        for (InboundMessageEntity m : msgs) {
             try {
                 inboundWorkHandler.handle(m);
                 m.setStatus(InboundMessageStatus.PROCESSED);
+                processed++;
             } catch (Exception ex) {
+                log.warn("Processing failed for message id={}", m.getId(), ex);
                 m.setStatus(InboundMessageStatus.FAILED);
+                failed++;
             }
             m.setUpdatedAt(doneAt);
         }
 
         inboundMessageRepository.saveAll(msgs);
+
+        return new BatchResult(msgs.size(), processed, failed);
     }}

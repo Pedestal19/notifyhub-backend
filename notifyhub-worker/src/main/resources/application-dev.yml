@@ -20,6 +20,7 @@ notifyhub:
     max-page-size: 100
     retry-after: PT2M
     batch-size: 50
+    health-stale-after: PT60S
 logging:
   level:
     com.notifyhub.worker.service.InboundMessageProcessor: DEBUG

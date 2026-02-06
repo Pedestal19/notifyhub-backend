@@ -44,7 +44,7 @@ public class InboundMessageProcessorTest {
 
     @BeforeEach
     void setup() {
-        props = new WorkerProperties(100, Duration.ofMinutes(2), 500L, 20);
+        props = new WorkerProperties(100, Duration.ofMinutes(2), 500L, 20, Duration.ofMinutes(1));
         inboundMessageProcessor = new InboundMessageProcessor(inboundMessageRepository, workHandler, props, claimer);
     }
 
@@ -59,14 +59,14 @@ public class InboundMessageProcessorTest {
                 .channel("SMS").phoneNumber("+1").body("a")
                 .build();
 
-        // Step 8: processor calls claimer, not repo queries
         when(claimer.claimReceived(50)).thenReturn(List.of(m1));
 
         doNothing().when(workHandler).handle(any(InboundMessageEntity.class));
 
-        int claimed = inboundMessageProcessor.processBatch(50);
-
-        assertThat(claimed).isEqualTo(1);
+        BatchResult result = inboundMessageProcessor.processBatch(50);
+        assertThat(result.claimed()).isEqualTo(1);
+        assertThat(result.processed()).isEqualTo(1);
+        assertThat(result.failed()).isEqualTo(0);
         assertThat(m1.getStatus()).isEqualTo(InboundMessageStatus.PROCESSED);
         assertThat(m1.getUpdatedAt()).isNotNull();
 
@@ -83,9 +83,10 @@ public class InboundMessageProcessorTest {
         when(claimer.claimReceived(50)).thenReturn(List.of());
         when(claimer.claimStuckProcessing(50)).thenReturn(List.of());
 
-        int claimed = inboundMessageProcessor.processBatch(50);
-
-        assertThat(claimed).isEqualTo(0);
+        BatchResult result = inboundMessageProcessor.processBatch(50);
+        assertThat(result.claimed()).isEqualTo(0);
+        assertThat(result.processed()).isEqualTo(0);
+        assertThat(result.failed()).isEqualTo(0);
 
         verify(claimer).claimReceived(50);
         verify(claimer).claimStuckProcessing(50);
@@ -110,9 +111,10 @@ public class InboundMessageProcessorTest {
 
         doNothing().when(workHandler).handle(any(InboundMessageEntity.class));
 
-        int claimed = inboundMessageProcessor.processBatch(50);
-
-        assertThat(claimed).isEqualTo(1);
+        BatchResult result = inboundMessageProcessor.processBatch(50);
+        assertThat(result.claimed()).isEqualTo(1);
+        assertThat(result.processed()).isEqualTo(1);
+        assertThat(result.failed()).isEqualTo(0);
         assertThat(stuck.getStatus()).isEqualTo(InboundMessageStatus.PROCESSED);
 
         verify(claimer).claimReceived(50);
@@ -145,9 +147,10 @@ public class InboundMessageProcessorTest {
         doThrow(new RuntimeException("boom"))
                 .when(workHandler).handle(argThat(m -> "bad".equals(m.getBody())));
 
-        int claimed = inboundMessageProcessor.processBatch(50);
-
-        assertThat(claimed).isEqualTo(2);
+        BatchResult result = inboundMessageProcessor.processBatch(50);
+        assertThat(result.claimed()).isEqualTo(2);
+        assertThat(result.processed()).isEqualTo(1);
+        assertThat(result.failed()).isEqualTo(1);
         assertThat(ok.getStatus()).isEqualTo(InboundMessageStatus.PROCESSED);
         assertThat(bad.getStatus()).isEqualTo(InboundMessageStatus.FAILED);
 
@@ -157,8 +160,6 @@ public class InboundMessageProcessorTest {
 
     @Test
     void processBatch_neverClaimsMoreThanLimit() {
-        // Explain-like-I'm-5:
-        // If you pass limit=2, processor must ask the claimer for 2 (not 100).
         when(claimer.claimReceived(2)).thenReturn(List.of(
                 InboundMessageEntity.builder().status(RECEIVED).body("r1").channel("SMS").phoneNumber("+1")
                         .receivedAt(OffsetDateTime.now()).createdAt(OffsetDateTime.now()).updatedAt(OffsetDateTime.now()).build(),
@@ -168,9 +169,10 @@ public class InboundMessageProcessorTest {
 
         doNothing().when(workHandler).handle(any(InboundMessageEntity.class));
 
-        int claimed = inboundMessageProcessor.processBatch(2);
-
-        assertThat(claimed).isEqualTo(2);
+        BatchResult result = inboundMessageProcessor.processBatch(2);
+        assertThat(result.claimed()).isEqualTo(2);
+        assertThat(result.processed()).isEqualTo(2);
+        assertThat(result.failed()).isEqualTo(0);
         verify(claimer).claimReceived(2);
         verify(claimer, never()).claimStuckProcessing(anyInt());
     }

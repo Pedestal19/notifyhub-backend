@@ -8,7 +8,6 @@ import java.time.Instant;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-@Getter
 public class InboundWorkerStats {
 
     private final Clock clock;
@@ -45,4 +44,11 @@ public class InboundWorkerStats {
         lastFailureAt.set(now);
         lastDurationMs.set(durationMs);
     }
+
+
+    public long lastClaimed() { return lastClaimed.get(); }
+    public long lastProcessed() { return lastProcessed.get(); }
+    public long lastFailed() { return lastFailed.get(); }
+    public long lastDurationMs() { return lastDurationMs.get(); }
+    public Instant lastSuccessAt() { return lastSuccessAt.get(); }
 }

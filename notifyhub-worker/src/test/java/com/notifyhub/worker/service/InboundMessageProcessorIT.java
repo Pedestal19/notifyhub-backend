@@ -40,20 +40,20 @@ public class InboundMessageProcessorIT {
     }
 
     @Autowired
-    InboundMessageRepository repo;
+    InboundMessageRepository inboundMessageRepository;
     @Autowired
-    InboundMessageProcessor processor;
+    InboundMessageProcessor inboundMessageProcessor;
     @MockitoBean
-    InboundWorkHandler workHandler;
+    InboundWorkHandler inboundWorkHandler;
 
     @BeforeEach
     void clean() {
-        repo.deleteAll();
+        inboundMessageRepository.deleteAll();
     }
 
     @Test
     void processor_updatesDbStatuses() {
-        doNothing().when(workHandler).handle(org.mockito.ArgumentMatchers.any());
+        doNothing().when(inboundWorkHandler).handle(org.mockito.ArgumentMatchers.any());
 
         var msg = InboundMessageEntity.builder()
                 .channel("SMS")
@@ -65,12 +65,14 @@ public class InboundMessageProcessorIT {
                 .updatedAt(OffsetDateTime.now())
                 .build();
 
-        var saved = repo.save(msg);
+        var saved = inboundMessageRepository.save(msg);
 
-        int claimed = processor.processBatch(50);
-        assertThat(claimed).isEqualTo(1);
+        BatchResult result = inboundMessageProcessor.processBatch(50);
+        assertThat(result.claimed()).isEqualTo(1);
+        assertThat(result.processed()).isEqualTo(1);
+        assertThat(result.failed()).isEqualTo(0);
 
-        var reloaded = repo.findById(saved.getId()).orElseThrow();
+        var reloaded = inboundMessageRepository.findById(saved.getId()).orElseThrow();
         assertThat(reloaded.getStatus()).isEqualTo(InboundMessageStatus.PROCESSED);
     }
 }

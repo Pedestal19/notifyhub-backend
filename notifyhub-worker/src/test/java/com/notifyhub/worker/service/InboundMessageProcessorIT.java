@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -20,7 +21,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doNothing;
 
 @Testcontainers
-@SpringBootTest
+@SpringBootTest(properties = "spring.task.scheduling.enabled=false")
+@ActiveProfiles("test")
 public class InboundMessageProcessorIT {
 
     @Container
@@ -37,6 +39,8 @@ public class InboundMessageProcessorIT {
         r.add("notifyhub.worker.max-page-size", () -> "100");
         r.add("notifyhub.worker.retry-after", () -> "PT2M");
         r.add("notifyhub.worker.poll-delay-ms", () -> "500");
+        r.add("notifyhub.worker.batch-size", () -> "50");
+        r.add("notifyhub.worker.health-stale-after", () -> "PT60S");
     }
 
     @Autowired

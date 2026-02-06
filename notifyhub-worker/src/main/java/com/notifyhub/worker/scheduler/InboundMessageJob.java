@@ -1,6 +1,7 @@
 package com.notifyhub.worker.scheduler;
 
 import com.notifyhub.worker.configuration.WorkerProperties;
+import com.notifyhub.worker.service.BatchResult;
 import com.notifyhub.worker.service.InboundMessageProcessor;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
@@ -35,14 +36,16 @@ public class InboundMessageJob {
 
         long start = System.nanoTime();
         try {
-            int claimed = inboundMessageProcessor.processBatch(props.batchSize());
+            BatchResult result = inboundMessageProcessor.processBatch(props.batchSize());
             long ms = (System.nanoTime() - start) / 1_000_000;
-            stats.recordSuccess(claimed, 0, ms);
-            log.info("Worker tick done: claimed={} durationMs={}", claimed, ms);
+            stats.recordSuccess(result, ms);
+
+            log.info("Worker tick done: claimed={} processed={} failed={} durationMs={}",
+                    result.claimed(), result.processed(), result.failed(), ms);
         } catch (Exception ex) {
             long ms = (System.nanoTime() - start) / 1_000_000;
-            stats.recordFailure(ex, ms);
-            log.error("Worker tick failed", ex);
+            stats.recordFailure(ms);
+            log.error("Worker tick failed (durationMs={})", ms, ex);
         } finally {
             running.set(false);
         }

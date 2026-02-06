@@ -9,6 +9,7 @@ public record WorkerProperties(
         int maxPageSize,
         Duration retryAfter,
         long pollDelayMs,
-        int batchSize
+        int batchSize,
+        Duration healthStaleAfter
 ) {
 }

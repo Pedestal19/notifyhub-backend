@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -25,7 +26,8 @@ import java.util.stream.Collectors;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Testcontainers
-@SpringBootTest
+@SpringBootTest(properties = "spring.task.scheduling.enabled=false")
+@ActiveProfiles("test")
 public class SkipLockedIT {
 
     @Container
@@ -37,6 +39,11 @@ public class SkipLockedIT {
         r.add("spring.datasource.username", postgres::getUsername);
         r.add("spring.datasource.password", postgres::getPassword);
         r.add("spring.jpa.hibernate.ddl-auto", () -> "update");
+        r.add("notifyhub.worker.max-page-size", () -> "100");
+        r.add("notifyhub.worker.retry-after", () -> "PT2M");
+        r.add("notifyhub.worker.poll-delay-ms", () -> "500");
+        r.add("notifyhub.worker.batch-size", () -> "50");
+        r.add("notifyhub.worker.health-stale-after", () -> "PT60S");
     }
 
     @Autowired InboundMessageRepository repo;

@@ -23,6 +23,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static com.notifyhub.worker.support.TestWorkerProps.addWorkerProps;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Testcontainers
@@ -39,11 +40,7 @@ public class SkipLockedIT {
         r.add("spring.datasource.username", postgres::getUsername);
         r.add("spring.datasource.password", postgres::getPassword);
         r.add("spring.jpa.hibernate.ddl-auto", () -> "update");
-        r.add("notifyhub.worker.max-page-size", () -> "100");
-        r.add("notifyhub.worker.retry-after", () -> "PT2M");
-        r.add("notifyhub.worker.poll-delay-ms", () -> "500");
-        r.add("notifyhub.worker.batch-size", () -> "50");
-        r.add("notifyhub.worker.health-stale-after", () -> "PT60S");
+        addWorkerProps(r);
     }
 
     @Autowired InboundMessageRepository repo;

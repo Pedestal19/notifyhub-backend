@@ -1,7 +1,6 @@
 package com.notifyhub.worker.scheduler;
 
 import com.notifyhub.worker.service.BatchResult;
-import lombok.Getter;
 
 import java.time.Clock;
 import java.time.Instant;

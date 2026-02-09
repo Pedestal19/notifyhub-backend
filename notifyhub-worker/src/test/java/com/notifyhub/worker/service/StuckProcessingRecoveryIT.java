@@ -62,7 +62,6 @@ class StuckProcessingRecoveryIT {
                 .status(InboundMessageStatus.PROCESSING)
                 .receivedAt(OffsetDateTime.now().minusMinutes(10))
                 .createdAt(OffsetDateTime.now().minusMinutes(10))
-                // older than retryAfter (2 minutes)
                 .updatedAt(OffsetDateTime.now().minusMinutes(5))
                 .build();
 

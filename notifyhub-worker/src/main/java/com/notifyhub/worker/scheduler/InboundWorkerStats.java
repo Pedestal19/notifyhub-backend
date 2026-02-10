@@ -1,7 +1,6 @@
 package com.notifyhub.worker.scheduler;
 
 import com.notifyhub.worker.service.BatchResult;
-import org.springframework.stereotype.Component;
 
 import java.time.Clock;
 import java.time.Instant;

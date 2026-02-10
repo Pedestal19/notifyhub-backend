@@ -44,7 +44,7 @@ public class InboundMessageJob {
                     result.claimed(), result.processed(), result.failed(), ms);
         } catch (Exception ex) {
             long ms = (System.nanoTime() - start) / 1_000_000;
-            stats.recordFailure(ms);
+            stats.recordFailure(ms, ex);
             log.error("Worker tick failed (durationMs={})", ms, ex);
         } finally {
             running.set(false);

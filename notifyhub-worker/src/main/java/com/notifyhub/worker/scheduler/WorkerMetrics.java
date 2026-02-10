@@ -22,7 +22,7 @@ public class WorkerMetrics implements MeterBinder {
         Gauge.builder("notifyhub.worker.last.duration.ms", stats, s -> s.lastDurationMs()).register(registry); //Bad return type in lambda expression: AtomicLong cannot be converted to double
 
         Gauge.builder("notifyhub.worker.last.success.epoch", stats, s -> {
-            Instant t = s.lastSuccessAt();
+            Instant t = s.lastSuccessAt().orElse(null);
             return t == null ? 0 : t.getEpochSecond();
         }).register(registry);
     }

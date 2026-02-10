@@ -23,7 +23,7 @@ public class WorkerHealthIndicator implements HealthIndicator {
     @Override
     public Health health() {
         Duration staleAfter = props.healthStaleAfter();
-        Instant lastSuccess = stats.lastSuccessAt();
+        Instant lastSuccess = stats.lastSuccessAt().orElse(null);
         if (lastSuccess == null) {
             return Health.down()
                     .withDetail("reason", "no successful run yet")

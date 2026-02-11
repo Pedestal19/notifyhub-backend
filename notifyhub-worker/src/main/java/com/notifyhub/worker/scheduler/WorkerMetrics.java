@@ -16,10 +16,10 @@ public class WorkerMetrics implements MeterBinder {
 
     @Override
     public void bindTo(MeterRegistry registry) {
-        Gauge.builder("notifyhub.worker.last.claimed", stats, s -> s.lastClaimed()).register(registry); //Bad return type in lambda expression: AtomicLong cannot be converted to double
-        Gauge.builder("notifyhub.worker.last.processed", stats, s -> s.lastProcessed()).register(registry); //Bad return type in lambda expression: AtomicLong cannot be converted to double
-        Gauge.builder("notifyhub.worker.last.failed", stats, s -> s.lastFailed()).register(registry); //Bad return type in lambda expression: AtomicLong cannot be converted to double
-        Gauge.builder("notifyhub.worker.last.duration.ms", stats, s -> s.lastDurationMs()).register(registry); //Bad return type in lambda expression: AtomicLong cannot be converted to double
+        Gauge.builder("notifyhub.worker.last.claimed", stats, s -> s.lastClaimed()).register(registry);
+        Gauge.builder("notifyhub.worker.last.processed", stats, s -> s.lastProcessed()).register(registry);
+        Gauge.builder("notifyhub.worker.last.failed", stats, s -> s.lastFailed()).register(registry);
+        Gauge.builder("notifyhub.worker.last.duration.ms", stats, s -> s.lastDurationMs()).register(registry);
 
         Gauge.builder("notifyhub.worker.last.success.epoch", stats, s -> {
             Instant t = s.lastSuccessAt().orElse(null);

@@ -59,4 +59,24 @@ public class WorkerHealthIndicatorTest {
         assertThat(health.health().getStatus()).isEqualTo(Status.DOWN);
         assertThat(health.health().getDetails().get("reason")).isEqualTo("stale");
     }
+
+    @Test
+    void health_is_down_when_no_success_yet() {
+        Clock clock = Clock.systemUTC();
+
+        WorkerProperties props = new WorkerProperties(
+                100,
+                Duration.ofMinutes(2),
+                500L,
+                50,
+                Duration.ofSeconds(60)
+        );
+
+        InboundWorkerStats stats = new InboundWorkerStats(clock);
+        WorkerHealthIndicator health =
+                new WorkerHealthIndicator(stats, props, clock);
+
+        assertThat(health.health().getStatus())
+                .isEqualTo(Status.DOWN);
+    }
 }

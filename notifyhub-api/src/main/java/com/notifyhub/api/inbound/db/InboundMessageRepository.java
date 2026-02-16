@@ -19,4 +19,8 @@ public interface InboundMessageRepository extends JpaRepository<InboundMessageEn
     long countByStatus(InboundMessageStatus status);
 
     long countByReceivedAtAfter(OffsetDateTime after);
+
+    Page<InboundMessageEntity> findByStatus(InboundMessageStatus status, Pageable pageable);
+
+    Page<InboundMessageEntity> findByPhoneNumber(String phoneNumber, Pageable pageable);
 }

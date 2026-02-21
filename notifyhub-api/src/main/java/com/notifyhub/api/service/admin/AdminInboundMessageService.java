@@ -25,9 +25,12 @@ public class AdminInboundMessageService {
             String phoneNumber,
             Pageable pageable
     ) {
+        boolean hasPhone = phoneNumber != null && !phoneNumber.isBlank();
         Page<InboundMessageEntity> page;
 
-        if (phoneNumber != null && !phoneNumber.isBlank()) {
+        if (status != null && hasPhone) {
+            page = repo.findByStatusAndPhoneNumberOrderByReceivedAtDesc(status, phoneNumber, pageable);
+        } else if (hasPhone) {
             page = repo.findByPhoneNumberOrderByReceivedAtDesc(phoneNumber, pageable);
         } else if (status != null) {
             page = repo.findByStatusOrderByReceivedAtDesc(status, pageable);

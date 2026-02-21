@@ -7,7 +7,9 @@ import com.notifyhub.api.inbound.db.InboundMessageRepository;
 import com.notifyhub.api.inbound.domain.InboundMessageStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.UUID;
 
@@ -42,7 +44,11 @@ public class AdminInboundMessageService {
     }
 
     public AdminInboundMessageDetails get(UUID id) {
-        InboundMessageEntity e = repo.findById(id).orElseThrow();
+        InboundMessageEntity e = repo.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Inbound message not found"
+                ));
         return toDetails(e);
     }
 

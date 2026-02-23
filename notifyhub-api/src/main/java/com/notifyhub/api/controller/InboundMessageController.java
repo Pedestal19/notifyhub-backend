@@ -21,11 +21,9 @@ import java.util.List;
 public class InboundMessageController {
 
     private final InboundMessageService inboundMessageService;
-    private final InboundMessageRepository inboundMessageRepository;
 
-    public InboundMessageController(InboundMessageService inboundMessageService, InboundMessageRepository inboundMessageRepository) {
+    public InboundMessageController(InboundMessageService inboundMessageService) {
         this.inboundMessageService = inboundMessageService;
-        this.inboundMessageRepository = inboundMessageRepository;
     }
 
     @PostMapping("/v1/inbound-messages")

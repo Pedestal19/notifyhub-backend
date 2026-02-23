@@ -6,6 +6,7 @@ import com.notifyhub.api.inbound.db.InboundMessageEntity;
 import com.notifyhub.api.inbound.db.InboundMessageRepository;
 import com.notifyhub.api.inbound.domain.InboundMessageStatus;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -16,10 +17,10 @@ import java.util.UUID;
 @Service
 public class AdminInboundMessageService {
 
-    private final InboundMessageRepository repo;
+    private final InboundMessageRepository inboundMessageRepository;
 
-    public AdminInboundMessageService(InboundMessageRepository repo) {
-        this.repo = repo;
+    public AdminInboundMessageService(InboundMessageRepository inboundMessageRepository) {
+        this.inboundMessageRepository = inboundMessageRepository;
     }
 
     public Page<AdminInboundMessageListItem> list(
@@ -29,22 +30,23 @@ public class AdminInboundMessageService {
     ) {
         boolean hasPhone = phoneNumber != null && !phoneNumber.isBlank();
         Page<InboundMessageEntity> page;
+        pageable = clamp(pageable);
 
         if (status != null && hasPhone) {
-            page = repo.findByStatusAndPhoneNumberOrderByReceivedAtDesc(status, phoneNumber, pageable);
+            page = inboundMessageRepository.findByStatusAndPhoneNumberOrderByReceivedAtDesc(status, phoneNumber, pageable);
         } else if (hasPhone) {
-            page = repo.findByPhoneNumberOrderByReceivedAtDesc(phoneNumber, pageable);
+            page = inboundMessageRepository.findByPhoneNumberOrderByReceivedAtDesc(phoneNumber, pageable);
         } else if (status != null) {
-            page = repo.findByStatusOrderByReceivedAtDesc(status, pageable);
+            page = inboundMessageRepository.findByStatusOrderByReceivedAtDesc(status, pageable);
         } else {
-            page = repo.findAllByOrderByReceivedAtDesc(pageable);
+            page = inboundMessageRepository.findAllByOrderByReceivedAtDesc(pageable);
         }
 
         return page.map(this::toListItem);
     }
 
     public AdminInboundMessageDetails get(UUID id) {
-        InboundMessageEntity e = repo.findById(id)
+        InboundMessageEntity e = inboundMessageRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Inbound message not found"
@@ -74,5 +76,10 @@ public class AdminInboundMessageService {
                 e.getCreatedAt(),
                 e.getUpdatedAt()
         );
+    }
+
+    private Pageable clamp(Pageable pageable) {
+        int size = Math.min(Math.max(pageable.getPageSize(), 1), 100);
+        return PageRequest.of(pageable.getPageNumber(), size, pageable.getSort());
     }
 }
